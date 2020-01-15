@@ -11,7 +11,7 @@ class Vocabulary
   def start
     yamlFile = YAML.load(File.read(@file_path))
 
-    puts yamlFile.to_s
+    puts "[+]New user: #{@message.chat.id}"
 
     yamlFile = {} if !yamlFile
 
@@ -30,21 +30,6 @@ class Vocabulary
         reply_markup: @answers
       )
     end
-
-=begin
-    if File.exist?(current_path + "/data/" + message.chat.id.to_s + "_new_words.txt")
-      bot.api.send_message(
-        chat_id: message.chat.id,
-        text: "З поверненням!\nДавай вивчимо ще декілька невідомих слів.\n/help для отримання всіх команд."
-      )
-    else
-      File.new(current_path + "/data/" + message.chat.id.to_s + "_new_words.txt", "a")
-      bot.api.send_message(
-        chat_id: message.chat.id,
-        text: "Вітання!\nЯ твій персональний бот який поможе в вивчені англійських слів.\n/help для отримання всіх команд."
-      )
-    end
-=end
   end
 
   def help
@@ -57,10 +42,15 @@ class Vocabulary
   def add_word
     yamlFile = YAML.load(File.read(@file_path))
 
-    if yamlFile
+    if !yamlFile
       yamlFile[@message.chat.id] = {:new_words => {}, :learned_words => {}}
       File.write(@file_path, yamlFile.to_yaml)
     end
+
+    cancel = Telegram::Bot::Types::ReplyKeyboardMarkup.new(
+      keyboard: "Cancel",
+      one_time_keyboard: true
+    )
 
     save = Telegram::Bot::Types::ReplyKeyboardMarkup.new(
       keyboard: "Save",
@@ -82,7 +72,7 @@ class Vocabulary
         break
       end
 
-      break if word == "/cancel" || word == "Save"
+      break if word == "/save" || word == "Save"
 
       @bot.api.send_message(
         chat_id: @message.chat.id,
@@ -94,9 +84,8 @@ class Vocabulary
         break
       end
 
-      break if translate == "/cancel" || word == "Save"
+      break if translate == "/cansel" || translate == "Cancel"
 
-      puts yamlFile
       yamlFile[@message.chat.id][:new_words][word] = [translate, 0]
 
       @bot.api.send_message(
@@ -107,6 +96,8 @@ class Vocabulary
 
     File.write(@file_path, yamlFile.to_yaml)
 
+    puts "[+]User #{@message.chat.id} just saved new words: #{yamlFile[@message.chat.id][:new_words].to_s}\n\n"
+
     @bot.api.send_message(
       chat_id: @message.chat.id,
       text: "All words was saved to your vocabulary.",
@@ -116,8 +107,6 @@ class Vocabulary
 
   def show_vocabulary
     yamlFile = YAML.load(File.read(@file_path))
-
-    puts yamlFile
 
     if yamlFile
       if yamlFile[@message.chat.id][:new_words].size == 0
@@ -151,16 +140,12 @@ class Vocabulary
       text: vocabulary
     )
 
-    puts vocabulary
+    puts "[+]#{@message.chat.id} vocabulary: #{yamlFile[@message.chat.id].to_s}\n\n"
   end
 
   def learning_mode
     yamlFile = YAML.load(File.read(@file_path))
-    puts yamlFile.to_s
-
     wordsFromFile = yamlFile[@message.chat.id][:new_words].values
-    puts wordsFromFile.to_s
-
     userWord = nil
     correct = 0
     wrong = 0
@@ -178,15 +163,10 @@ class Vocabulary
       )
 
       while true
-
         break if wordsFromFile.size == 0
 
         translatedWord = wordsFromFile.sample
-        puts translatedWord.to_s
-        puts wordsFromFile.index(translatedWord)
-
         correctWord = yamlFile[@message.chat.id][:new_words].key(translatedWord)
-        puts correctWord.to_s
 
         @bot.api.send_message(
           chat_id: @message.chat.id,
@@ -207,7 +187,6 @@ class Vocabulary
           )
 
           yamlFile[@message.chat.id][:new_words][correctWord][1] += 1
-
           correct += 1
 
           if yamlFile[@message.chat.id][:new_words][correctWord][1] == 5
@@ -215,7 +194,6 @@ class Vocabulary
             yamlFile[@message.chat.id][:new_words].delete(correctWord)
             learnedWords += 1
           end
-
         else
           @bot.api.send_message(
             chat_id: @message.chat.id,
@@ -223,16 +201,12 @@ class Vocabulary
           )
 
           yamlFile[@message.chat.id][:new_words][correctWord][1] = 0
-
           wrong += 1
         end
-
         wordsFromFile.delete_at(wordsFromFile.index(translatedWord)).to_s
-
       end
 
       File.write(@file_path, yamlFile.to_yaml)
-
 
       @bot.api.send_message(
         chat_id: @message.chat.id,
@@ -244,86 +218,16 @@ class Vocabulary
         text: "Learning mode [OFF]",
         reply_markup: @answers
       )
-
     end
-
-=begin
-    yamlFile = YAML.load(File.read(@file_path))
-    fileWords = yamlFile[@message.chat.id][:new_words].values
-    puts fileWords.size
-    userWord = ""
-    correct = 0
-    wrong = 0
-
-    if fileWords.size == 0
-      @bot.api.send_message(
-        chat_id: @message.chat.id,
-        text: "I can't find any word in your vacabulary.\nYou can add new word /add"
-      )
-    else
-      @bot.api.send_message(
-        chat_id: @message.chat.id,
-        text: "Learning mode [ON]"
-      )
-
-      while userWord != "/end" || fileWords.size != 0
-
-        translate = fileWords.sample
-
-        puts translate.to_s
-
-        correctWord = yamlFile[@message.chat.id][:new_words].key(translate)
-        puts correctWord
-
-        @bot.api.send_message(
-          chat_id: @message.chat.id,
-          text: translate[0]
-        )
-
-        @bot.listen do |message|
-          userWord = message.text
-          break
-        end
-
-        if userWord == correctWord
-
-          @bot.api.send_message(
-            chat_id: @message.chat.id,
-            text: "Right!"
-          )
-
-          yamlFile[@message.chat.id][:new_words][correctWord[1]] = translate[1] + 1
-          correct += 1
-        else
-
-          @bot.api.send_message(
-            chat_id: @message.chat.id,
-            text: "Wrong!\nCorrect word: #{correctWord}"
-          )
-
-          wrong += 1
-        end
-
-
-        puts fileWords
-        puts fileWords.shift(fileWords.index(translate))
-        puts userWord
-        puts fileWords
-
-      end
-
-      File.write(@file_path, yamlFile.to_yaml)
-
-      @bot.api.send_message(
-        chat_id: @message.chat.id,
-        text: "Learning mode [OFF]"
-      )
-    end
-=end
   end
 
   def show_stat
     yamlFile = YAML.load(File.read(@file_path))
+
+    if !yamlFile || !yamlFile.key?(@message.chat.id)
+      yamlFile[@message.chat.id] = {:new_words => {}, :learned_words => {}}
+      File.write(@file_path, yamlFile.to_yaml)
+    end
 
     new_words = yamlFile[@message.chat.id][:new_words].size
     learned_words = yamlFile[@message.chat.id][:learned_words].size
@@ -332,6 +236,8 @@ class Vocabulary
       chat_id: @message.chat.id,
       text: "STATISTIC\nNew words: #{new_words}\nLearned words: #{learned_words}"
     )
+
+    puts "[+]#{@message.chat.id} statistic:\nnew words: #{new_words}\nlearned words: #{learned_words}\n\n"
   end
 
   def notification

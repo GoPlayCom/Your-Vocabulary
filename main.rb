@@ -11,21 +11,14 @@ file_path = current_path + '/users.yml'
 Telegram::Bot::Client.run(TOKEN) do |vocabularyBot|
   vocabularyBot.listen do |mainMessage|
 
-
     answers = Telegram::Bot::Types::ReplyKeyboardMarkup.new(
       keyboard: [
         ["Add new word", "Show vocabulary"],
         ["Learning mode", "Show statistic"],
         "Notification"
       ],
-      one_time_keyboard: false
+      one_time_keyboard: true
     )
-
-=begin
-    unless File.exist?(current_path + "/data/" + message.chat.id.to_s + "_new_words.txt")
-      File.new(current_path + "/data/" + message.chat.id.to_s + "_new_words.txt", "a")
-    end
-=end
 
     vocabulary = Vocabulary.new(file_path, vocabularyBot, mainMessage, answers)
 
