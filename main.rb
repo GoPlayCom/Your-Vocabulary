@@ -15,7 +15,7 @@ Telegram::Bot::Client.run(TOKEN) do |vocabularyBot|
       keyboard: [
         ["Add new word", "Show vocabulary"],
         ["Learning mode", "Show statistic"],
-        "Notification"
+        ["Notification", "Remove word"]
       ],
       one_time_keyboard: true
     )
@@ -37,6 +37,8 @@ Telegram::Bot::Client.run(TOKEN) do |vocabularyBot|
       vocabulary.show_stat
     when '/notification', "Notification"
       vocabulary.notification
+    when '/remove', "Remove word"
+      vocabulary.removeWord
     else
       vocabulary.inputError
     end

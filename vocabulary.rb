@@ -35,14 +35,16 @@ class Vocabulary
   def help
     @bot.api.send_message(
       chat_id: @message.chat.id,
-      text: "/add — adding new word.\n/show — your vacabulary.\n/learn — learning mode.\n/stat — show current statistic.\n/notification — learning by notification [on|off].\n/cancel — canxel adding word.\n/end — end learning mode."
+      text: "/add — adding new word.\n/show — your vacabulary.\n/learn — learning mode.\n/stat — show current statistic.\n/notification — learning by notification [on|off].\n/cancel — cancel adding word.\n/end — end learning mode."
     )
   end
 
   def add_word
     yamlFile = YAML.load(File.read(@file_path))
 
-    if !yamlFile
+    yamlFile = {} if !yamlFile
+
+    if !yamlFile.key?(@message.chat.id)
       yamlFile[@message.chat.id] = {:new_words => {}, :learned_words => {}}
       File.write(@file_path, yamlFile.to_yaml)
     end
@@ -76,7 +78,8 @@ class Vocabulary
 
       @bot.api.send_message(
         chat_id: @message.chat.id,
-        text: "Translate:"
+        text: "Translate:",
+        reply_markup: cancel
       )
 
       @bot.listen do |message|
@@ -84,7 +87,7 @@ class Vocabulary
         break
       end
 
-      break if translate == "/cansel" || translate == "Cancel"
+      break if translate == "/cancel" || translate == "Cancel"
 
       yamlFile[@message.chat.id][:new_words][word] = [translate, 0]
 
@@ -106,31 +109,31 @@ class Vocabulary
   def show_vocabulary
     yamlFile = YAML.load(File.read(@file_path))
 
-    if yamlFile
-      if yamlFile[@message.chat.id][:new_words].size == 0
-        vocabulary = "I can't find any words in your vocabulary.\n"
-      else
-        vocabulary = "New words\n— — — — — — — — — —\n"
+    yamlFile = {} if !yamlFile
 
-        yamlFile[@message.chat.id][:new_words].each do |word, translate|
-           vocabulary += word + "  —  " + translate[0] + "\n"
-        end
-      end
-
-      if yamlFile[@message.chat.id][:learned_words].size == 0
-        vocabulary += "\nYou haven't learned a word."
-      else
-        vocabulary += "\nLearned words\n— — — — — — — — — —\n"
-
-        yamlFile[@message.chat.id][:learned_words].each do |word, translate|
-          vocabulary += word + "  —  " + translate[0] + "\n"
-        end
-      end
-    else
-      yamlFile = {}
-      vocabulary = "I can't find any word in your vocabulary.\nYou can add new word /add"
+    if !yamlFile.key?(@message.chat.id)
       yamlFile[@message.chat.id] = {:new_words => {}, :learned_words => {}}
       File.write(@file_path, yamlFile.to_yaml)
+    end
+
+    if yamlFile[@message.chat.id][:new_words].size == 0
+      vocabulary = "I can't find any words in your vocabulary.\n"
+    else
+      vocabulary = "New words\n— — — — — — — — — —\n"
+
+      yamlFile[@message.chat.id][:new_words].each do |word, translate|
+         vocabulary += word + "  —  " + translate[0] + "\n"
+      end
+    end
+
+    if yamlFile[@message.chat.id][:learned_words].size == 0
+      vocabulary += "\nYou haven't learned a word."
+    else
+      vocabulary += "\nLearned words\n— — — — — — — — — —\n"
+
+      yamlFile[@message.chat.id][:learned_words].each do |word, translate|
+        vocabulary += word + "  —  " + translate[0] + "\n"
+      end
     end
 
     @bot.api.send_message(
@@ -141,6 +144,14 @@ class Vocabulary
 
   def learning_mode
     yamlFile = YAML.load(File.read(@file_path))
+
+    yamlFile = {} if !yamlFile
+
+    if !yamlFile.key?(@message.chat.id)
+      yamlFile[@message.chat.id] = {:new_words => {}, :learned_words => {}}
+      File.write(@file_path, yamlFile.to_yaml)
+    end
+
     wordsFromFile = yamlFile[@message.chat.id][:new_words].values
     userWord = nil
     correct = 0
@@ -155,7 +166,7 @@ class Vocabulary
     else
       @bot.api.send_message(
         chat_id: @message.chat.id,
-        text: "Learning mode [ON]"
+        text: "Learning mode"
       )
 
       while true
@@ -208,19 +219,15 @@ class Vocabulary
         chat_id: @message.chat.id,
         text: "Correct: #{correct}\nWrong: #{wrong}\nLearned: #{learnedWords}"
       )
-
-      @bot.api.send_message(
-        chat_id: @message.chat.id,
-        text: "Learning mode [OFF]",
-        reply_markup: @answers
-      )
     end
   end
 
   def show_stat
     yamlFile = YAML.load(File.read(@file_path))
 
-    if !yamlFile || !yamlFile.key?(@message.chat.id)
+    yamlFile = {} if !yamlFile
+
+    if !yamlFile.key?(@message.chat.id)
       yamlFile[@message.chat.id] = {:new_words => {}, :learned_words => {}}
       File.write(@file_path, yamlFile.to_yaml)
     end
@@ -235,7 +242,57 @@ class Vocabulary
   end
 
   def notification
+    yamlFile = YAML.load(File.read(@file_path))
 
+    yamlFile = {} if !yamlFile
+
+    if !yamlFile.key?(@message.chat.id)
+      yamlFile[@message.chat.id] = {:new_words => {}, :learned_words => {}}
+      File.write(@file_path, yamlFile.to_yaml)
+    end
+  end
+
+  def removeWord
+    yamlFile = YAML.load(File.read(@file_path))
+    word = nil
+
+    yamlFile = {} if !yamlFile
+
+    if !yamlFile.key?(@message.chat.id)
+      yamlFile[@message.chat.id] = {:new_words => {}, :learned_words => {}}
+      File.write(@file_path, yamlFile.to_yaml)
+    end
+
+    @bot.api.send_message(
+      chat_id: @message.chat.id,
+      text: "Word that you want remove:"
+    )
+
+    @bot.listen do |message|
+      word = message.text.capitalize
+      break
+    end
+
+    if yamlFile[@message.chat.id][:new_words].key?(word)
+      yamlFile[@message.chat.id][:new_words].delete(word)
+      File.write(@file_path, yamlFile.to_yaml)
+      @bot.api.send_message(
+        chat_id: @message.chat.id,
+        text: "\'#{word}\' was removed from your vocabulary."
+      )
+    elsif yamlFile[@message.chat.id][:learned_words].key?(word)
+      yamlFile[@message.chat.id][:learned_words].delete(word)
+      File.write(@file_path, yamlFile.to_yaml)
+      @bot.api.send_message(
+        chat_id: @message.chat.id,
+        text: "\'#{word}\' was removed from your vocabulary."
+      )
+    else
+      @bot.api.send_message(
+        chat_id: @message.chat.id,
+        text: "I can't find this word in your vocabulary."
+      )
+    end
   end
 
   def inputError
