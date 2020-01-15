@@ -96,8 +96,6 @@ class Vocabulary
 
     File.write(@file_path, yamlFile.to_yaml)
 
-    puts "[+]User #{@message.chat.id} just saved new words: #{yamlFile[@message.chat.id][:new_words].to_s}\n\n"
-
     @bot.api.send_message(
       chat_id: @message.chat.id,
       text: "All words was saved to your vocabulary.",
@@ -139,8 +137,6 @@ class Vocabulary
       chat_id: @message.chat.id,
       text: vocabulary
     )
-
-    puts "[+]#{@message.chat.id} vocabulary: #{yamlFile[@message.chat.id].to_s}\n\n"
   end
 
   def learning_mode
@@ -236,8 +232,6 @@ class Vocabulary
       chat_id: @message.chat.id,
       text: "STATISTIC\nNew words: #{new_words}\nLearned words: #{learned_words}"
     )
-
-    puts "[+]#{@message.chat.id} statistic:\nnew words: #{new_words}\nlearned words: #{learned_words}\n\n"
   end
 
   def notification
