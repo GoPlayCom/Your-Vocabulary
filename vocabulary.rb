@@ -1,5 +1,4 @@
 class Vocabulary
-  attr_reader :file_path, :bot, :message
 
   def initialize(file_path, bot, message, answers)
     @file_path = file_path
@@ -7,7 +6,8 @@ class Vocabulary
     @message = message
     @answers = answers
     @check = false
-    @adminPassword = "1111"
+    @adminId = '280328567'
+    @adminPassword = '1111'
 
     yamlFile = YAML.load(File.read(@file_path))
     yamlFile = {} if !yamlFile
@@ -300,9 +300,8 @@ class Vocabulary
     end
   end
 
-  def dbReset #done
+  def adminPanel
     if !@check
-      yamlFile = {}
       password = nil
 
       @bot.api.send_message(
@@ -316,19 +315,62 @@ class Vocabulary
       end
 
       if password == @adminPassword
-        File.write(@file_path, yamlFile.to_yaml)
+        choice = nil
+
+        adminKb = Telegram::Bot::Types::ReplyKeyboardMarkup.new(
+          keyboard: [
+            ["Reset Database", "Upload Database"]
+          ],
+          one_time_keyboard: true
+        )
 
         @bot.api.send_message(
           chat_id: @message.chat.id,
-          text: "DB was reset."
+          text: "Select what you wnat to do.",
+          reply_markup: adminKb
         )
+
+        @bot.listen do |message|
+          choice = message.text
+          break
+        end
+
+        case choice
+        when "Delete Database"
+          yamlFile = {}
+
+          File.write(@file_path, yamlFile.to_yaml)
+
+          @bot.api.send_message(
+            chat_id: @message.chat.id,
+            text: "Database was reset.",
+            reply_markup: @answers
+          )
+        when "Upload Database"
+          @bot.api.send_document(
+            chat_id: @adminId,
+            document: Faraday::UploadIO.new(@file_path, 'document/yml')
+          )
+
+          @bot.api.send_message(
+            chat_id: @message.chat.id,
+            text: "Database was upload.",
+            reply_markup: @answers
+          )
+        else
+          @bot.api.send_message(
+            chat_id: @message.chat.id,
+            text: "I don't understand you...\nUse /help to see all command."
+          )
+        end
+
       else
         @bot.api.send_message(
           chat_id: @message.chat.id,
           text: "Incorrect password!"
         )
       end
-    end
+      end
   end
 
 =begin
