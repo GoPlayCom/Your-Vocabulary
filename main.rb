@@ -39,6 +39,14 @@ Telegram::Bot::Client.run(TOKEN) do |vocabularyBot|
       vocabulary.notification
     when '/remove', "Remove word"
       vocabulary.removeWord
+    when '/dbReset'
+      vocabulary.dbReset
+
+=begin
+    when '/deleteUser'
+      vocabulary.deleteUser
+=end
+
     else
       vocabulary.inputError
     end
